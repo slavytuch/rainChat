@@ -133,6 +133,16 @@ func (r *Repo) GetById(id uuid.UUID) *User {
 	return nil
 }
 
+func (r *Repo) GetByName(name string) *User {
+	for _, u := range r.userList {
+		if u.Name == name {
+			return &u
+		}
+	}
+
+	return nil
+}
+
 func (r *Repo) DeleteUser(user User) {
 	var result []User
 	for _, u := range r.userList {

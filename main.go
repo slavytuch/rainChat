@@ -24,6 +24,7 @@ func main() {
 		http.ServeFile(rw, r, "pages/index.html")
 	})
 
+	mux.HandleFunc("/register", registerHandler)
 	mux.HandleFunc("/login", loginHandler)
 
 	mux.HandleFunc("/ws", func(rw http.ResponseWriter, r *http.Request) {

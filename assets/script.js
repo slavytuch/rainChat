@@ -10,15 +10,14 @@ function sendMessage(message, conn) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-    var username = prompt("Enter username")
-    let messagebox = document.getElementById("message")
-
+    let username = prompt("Login")
+    let route = "login"
     if (!username) {
-        alert("Yeah, nah, get lost")
-        return;
+        username = prompt("Register")
+        route = "register"
     }
 
-    fetch("login", {
+    fetch(route, {
         method: "POST",
         body: JSON.stringify({
             name: username
@@ -26,7 +25,7 @@ document.addEventListener("DOMContentLoaded", () => {
     })
         .then(response => response.json())
         .then((data) => {
-        initWs(data.token, messagebox)
+        initWs(data.token, document.getElementById("message"))
     }).catch(error => console.error("Ошибка авторизации", error))
 })
 

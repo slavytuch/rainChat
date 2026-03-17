@@ -39,6 +39,40 @@ func loginHandler(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	user := userRepo.GetByName(req.Name)
+
+	if user == nil {
+		badHeaderResp(rw, "not found")
+
+		return
+	}
+}
+
+func registerHandler(rw http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+	var req LoginRequest
+
+	body, err := io.ReadAll(r.Body)
+
+	if err != nil {
+		badHeaderResp(rw, "invalid reading request body: "+err.Error())
+		return
+	}
+
+	err = json.Unmarshal(body, &req)
+
+	if err != nil {
+		badHeaderResp(rw, "invalid request body: "+err.Error())
+
+		return
+	}
+
+	if req.Name == "" {
+		badHeaderResp(rw, "name is empty")
+
+		return
+	}
+
 	newUser := NewUser(req.Name)
 	err = userRepo.PushUser(newUser)
 
