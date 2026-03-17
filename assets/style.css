@@ -1,0 +1,25 @@
+html {
+    background: lightgrey;
+}
+
+#chat {
+    padding: 10px;
+    background: #fff;
+    min-height: 400px;
+}
+
+.chat-controls {
+    display: flex;
+    width: 100%;
+    flex-direction: column;
+    max-width: 100%;
+}
+
+.author {
+    font-weight: bold;
+    color: orange;
+}
+
+.message {
+    color: black;
+}
