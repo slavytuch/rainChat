@@ -1,22 +1,17 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"github.com/google/uuid"
-	"github.com/gorilla/websocket"
 	"log/slog"
-	"sync"
 	"time"
 )
 
 type Room struct {
-	Id             uuid.UUID
-	ConnectionList map[User]*websocket.Conn
-	MessageList    []Message
-	ReadChannel    chan WebsocketEvent
-	WriteChannel   chan Message
-	Mux            sync.Mutex
+	Id                  uuid.UUID
+	ConnectionList      []*Client
+	MessageList         []Message
+	BroadcastingChannel chan WebsocketEvent
 }
 
 type Message struct {
@@ -28,7 +23,7 @@ type Message struct {
 	Updated   bool      `json:"updated"`
 }
 
-func userMessage(user User, message string) Message {
+func userMessage(user *User, message string) Message {
 	return Message{
 		Id:        uuid.New(),
 		Author:    user.Name,
@@ -40,53 +35,50 @@ func userMessage(user User, message string) Message {
 }
 
 func systemMessage(message string) Message {
-	return userMessage(User{
+	return userMessage(&User{
 		ID:    uuid.New(),
 		Name:  "System",
 		Color: "red",
 	}, message)
 }
 
-func (r *Room) Connect(user User, conn *websocket.Conn) error {
+func (r *Room) Connect(client *Client) error {
+	slog.Info("Connecting client", "client", client)
 
-	if _, ok := r.ConnectionList[user]; ok {
-		return errors.New("user is already connected")
+	for _, c := range r.ConnectionList {
+		c.ReadCh <- WebsocketEvent{
+			Client:  client,
+			Type:    WebsocketEventTypeConnect,
+			Message: systemMessage(fmt.Sprintf("User %s connected", c.User.Name)),
+		}
 	}
-
-	for u, _ := range r.ConnectionList {
-		u.SendCh <- systemMessage(fmt.Sprintf("User %s connected", user.Name))
-	}
-
-	r.Mux.Lock()
-	r.ConnectionList[user] = conn
-	r.Mux.Unlock()
 
 	for _, m := range r.MessageList {
-		conn.WriteJSON(m)
+		client.ReadCh <- WebsocketEvent{
+			Type:    WebsocketEventTypeMessageSend,
+			Message: m,
+		}
 	}
+
+	r.ConnectionList = append(r.ConnectionList, client)
 
 	return nil
 }
 
-func (r *Room) Disconnect(user User) {
-	conn, ok := r.ConnectionList[user]
-
-	if !ok {
-		return
+func (r *Room) Disconnect(client *Client) {
+	for i, c := range r.ConnectionList {
+		if c.Id == client.Id {
+			r.ConnectionList[i] = r.ConnectionList[len(r.ConnectionList)-1]
+			r.ConnectionList = r.ConnectionList[:len(r.ConnectionList)-1]
+			break
+		}
 	}
-
-	conn.WriteMessage(websocket.TextMessage, []byte("Connection closed by server"))
-	conn.Close()
-	r.Mux.Lock()
-	delete(r.ConnectionList, user)
-	r.Mux.Unlock()
 }
 
 func NewRoom() Room {
 	return Room{
-		Id:             uuid.New(),
-		ConnectionList: make(map[User]*websocket.Conn),
-		ReadChannel:    make(chan WebsocketEvent),
+		Id:                  uuid.New(),
+		BroadcastingChannel: make(chan WebsocketEvent),
 	}
 }
 
@@ -95,21 +87,35 @@ func (r *Room) Serve(doneCh chan bool) {
 		select {
 		case <-doneCh:
 			fmt.Println("Close room received")
-			close(r.ReadChannel)
+			for _, c := range r.ConnectionList {
+				c.Close()
+			}
 			return
-		case we := <-r.ReadChannel:
+		case we, ok := <-r.BroadcastingChannel:
+			if !ok {
+				slog.Info("Read channel is closed")
+				break
+			}
+
 			slog.Info("Received event", "event", we)
 			switch we.Type {
 			case WebsocketEventTypeMessageSend:
 				r.MessageList = append(r.MessageList, we.Message)
 
-				for u := range r.ConnectionList {
-					u.SendCh <- we.Message
+				for _, c := range r.ConnectionList {
+					c.ReadCh <- WebsocketEvent{
+						Client:  we.Client,
+						Type:    WebsocketEventTypeMessageSend,
+						Message: we.Message,
+					}
 				}
 			case WebsocketEventTypeDisconnect:
-				r.Disconnect(we.User)
-				for u := range r.ConnectionList {
-					u.SendCh <- systemMessage(fmt.Sprintf("User %s has disconnected", we.User.Name))
+				r.Disconnect(we.Client)
+				for _, c := range r.ConnectionList {
+					c.ReadCh <- WebsocketEvent{
+						Type:    WebsocketEventTypeMessageSend,
+						Message: systemMessage(fmt.Sprintf("Client %s has disconnected", we.Client.User.Name)),
+					}
 				}
 			case WebsocketEventTypeMessageUpdate:
 				found := false
@@ -123,14 +129,15 @@ func (r *Room) Serve(doneCh chan bool) {
 					found = true
 
 					for _, c := range r.ConnectionList {
-						c.WriteJSON(r.MessageList[midx])
+						c.ReadCh <- WebsocketEvent{
+							Type:    WebsocketEventTypeMessageUpdate,
+							Message: r.MessageList[midx],
+						}
 					}
 				}
 
 				if !found {
-					r.ConnectionList[we.User].WriteJSON(map[string]any{
-						"error": "message not found",
-					})
+					slog.Error("Message not found", "event", we)
 				}
 			default:
 				slog.Error("Unknown event type")

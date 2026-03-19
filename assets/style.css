@@ -6,6 +6,7 @@ html {
     padding: 10px;
     background: #fff;
     min-height: 400px;
+    width: 100%;
 }
 
 .chat-controls {
@@ -22,4 +23,14 @@ html {
 
 .message {
     color: black;
+}
+
+.chat-wrapper {
+    display: flex;
+    flex-direction: row;
+}
+
+#chat-users {
+    width: 25%;
+    background: lightgreen;
 }

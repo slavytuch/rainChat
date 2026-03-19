@@ -18,6 +18,7 @@ type WebsocketMessageType string
 const (
 	WebsocketEventTypeMessageSend   = WebsocketEventType("message-send")
 	WebsocketEventTypeMessageUpdate = WebsocketEventType("message-update")
+	WebsocketEventTypeConnect       = WebsocketEventType("connect")
 	WebsocketEventTypeDisconnect    = WebsocketEventType("disconnect")
 
 	WebsocketMessageTypeSend   = WebsocketMessageType("message-send")
@@ -25,7 +26,7 @@ const (
 )
 
 type WebsocketEvent struct {
-	User    User
+	Client  *Client
 	Type    WebsocketEventType
 	Message Message
 }

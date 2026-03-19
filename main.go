@@ -12,7 +12,7 @@ var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 }
-var userRepo Repo
+var userRepo UserRepo
 var room = NewRoom()
 
 func main() {
@@ -53,21 +53,22 @@ func main() {
 		connUser := userRepo.GetById(userUUID)
 
 		if connUser == nil {
-			conn.WriteMessage(websocket.TextMessage, []byte("User not found"))
+			conn.WriteMessage(websocket.TextMessage, []byte("Client not found"))
 			conn.Close()
 			return
 		}
 
-		err = room.Connect(*connUser, conn)
+		client := connUser.createClient(conn)
+		go client.reader(room.BroadcastingChannel)
+		go client.writer(room.BroadcastingChannel)
+
+		err = room.Connect(&client)
 
 		if err != nil {
 			conn.WriteMessage(websocket.TextMessage, []byte("Error connecting to room: "+err.Error()))
 			conn.Close()
 			return
 		}
-
-		go connUser.reader(conn, room.ReadChannel)
-		go connUser.writer(conn)
 	})
 
 	fmt.Println("Starting...")

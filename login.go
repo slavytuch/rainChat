@@ -73,7 +73,7 @@ func registerHandler(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	newUser := NewUser(req.Name)
-	err = userRepo.PushUser(newUser)
+	err = userRepo.PushUser(&newUser)
 
 	if err != nil {
 		badHeaderResp(rw, "error creating user: "+err.Error())
