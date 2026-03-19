@@ -85,6 +85,7 @@ func (u User) reader(conn *websocket.Conn, receiveCh chan<- WebsocketEvent) {
 func (u *User) writer(conn *websocket.Conn) {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
+		slog.Info("Closing connection with", "user", u)
 		ticker.Stop()
 		conn.Close()
 	}()
@@ -92,13 +93,18 @@ func (u *User) writer(conn *websocket.Conn) {
 	for {
 		select {
 		case msg, ok := <-u.SendCh:
-			slog.Info("Sending message", "message", msg)
+			slog.Info("Sending message", "message", msg, "user", u)
 			if !ok {
 				conn.WriteMessage(websocket.CloseMessage, []byte("Read channel closed"))
+
 				return
 			}
 
-			conn.WriteJSON(msg)
+			err := conn.WriteJSON(msg)
+			if err != nil {
+				slog.Error("Error sending message", "error", err)
+			}
+
 		case <-ticker.C:
 			conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if err := conn.WriteMessage(websocket.PingMessage, nil); err != nil {

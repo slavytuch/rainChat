@@ -1,5 +1,5 @@
-function addMessage(message, author) {
-    document.getElementById("chat").innerHTML += "<span class='author'>"+author+"</span>" + ": <span class='message'></span>" + message + "<br>"
+function addMessage(message, author, color) {
+    document.getElementById("chat").innerHTML += "<span class='author' style='color: "+color+"' >"+author+"</span>" + ": <span class='message'></span>" + message + "<br>"
 }
 
 function sendMessage(message, conn) {
@@ -34,14 +34,15 @@ function initWs(token, messagebox)
     let conn = new WebSocket("ws://" + document.location.host + "/ws?token=" + token)
 
     conn.onclose = function () {
-        addMessage("Conn closed!", "System")
+        addMessage("Conn closed!", "System", "green")
+        console.log("closing conn")
     }
 
     conn.onopen = function () {
         conn.onmessage = function (e) {
             let data = JSON.parse(e.data)
 
-            addMessage(data.text, data.author ?? "who knows")
+            addMessage(data.text, data.author ?? "who knows", data.color ?? "orange")
         }
 
         document.getElementById("send").onclick = function () {

@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"log/slog"
+	"sync"
 	"time"
 )
 
@@ -15,6 +16,7 @@ type Room struct {
 	MessageList    []Message
 	ReadChannel    chan WebsocketEvent
 	WriteChannel   chan Message
+	Mux            sync.Mutex
 }
 
 type Message struct {
@@ -55,7 +57,9 @@ func (r *Room) Connect(user User, conn *websocket.Conn) error {
 		u.SendCh <- systemMessage(fmt.Sprintf("User %s connected", user.Name))
 	}
 
+	r.Mux.Lock()
 	r.ConnectionList[user] = conn
+	r.Mux.Unlock()
 
 	for _, m := range r.MessageList {
 		conn.WriteJSON(m)
@@ -73,8 +77,9 @@ func (r *Room) Disconnect(user User) {
 
 	conn.WriteMessage(websocket.TextMessage, []byte("Connection closed by server"))
 	conn.Close()
-
+	r.Mux.Lock()
 	delete(r.ConnectionList, user)
+	r.Mux.Unlock()
 }
 
 func NewRoom() Room {
@@ -98,12 +103,12 @@ func (r *Room) Serve(doneCh chan bool) {
 			case WebsocketEventTypeMessageSend:
 				r.MessageList = append(r.MessageList, we.Message)
 
-				for u, _ := range r.ConnectionList {
+				for u := range r.ConnectionList {
 					u.SendCh <- we.Message
 				}
 			case WebsocketEventTypeDisconnect:
 				r.Disconnect(we.User)
-				for u, _ := range r.ConnectionList {
+				for u := range r.ConnectionList {
 					u.SendCh <- systemMessage(fmt.Sprintf("User %s has disconnected", we.User.Name))
 				}
 			case WebsocketEventTypeMessageUpdate:
