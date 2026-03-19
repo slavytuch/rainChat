@@ -3,7 +3,11 @@ package main
 import "github.com/google/uuid"
 
 type LoginRequest struct {
-	Name string `json:"name"`
+	Name string `form:"name" binding:"required"`
+}
+
+type RegisterRequest struct {
+	Name string `form:"name" binding:"required"`
 }
 
 type WebsocketMessage struct {
@@ -26,7 +30,7 @@ const (
 )
 
 type WebsocketEvent struct {
-	Client  *Client
-	Type    WebsocketEventType
-	Message Message
+	Client  *Client            `json:"client"`
+	Type    WebsocketEventType `json:"type"`
+	Message Message            `json:"message"`
 }

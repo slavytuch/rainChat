@@ -4,6 +4,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"log/slog"
+	"sync/atomic"
 	"time"
 )
 
@@ -18,22 +19,32 @@ const (
 )
 
 type Client struct {
-	Id     uuid.UUID
-	User   *User
+	Id     uuid.UUID `json:"id"`
+	User   *User     `json:"user"`
 	conn   *websocket.Conn
-	ReadCh chan WebsocketEvent
+	readCh chan WebsocketEvent
+	closed atomic.Bool
+	doneCh chan struct{}
 }
 
 func (c *Client) Close() {
-	slog.Info("closing client via external call", "client", c)
+	if c.closed.Load() {
+		return
+	}
+
+	c.closed.Store(true)
+
+	slog.Info("closing Client via external call", "Client", c)
 	c.conn.Close()
-	close(c.ReadCh)
+	c.doneCh <- struct{}{}
 }
 
 func (c *Client) reader(roomCh chan<- WebsocketEvent) {
 	defer func() {
-		slog.Info("Closing reader", "client", c)
-		close(c.ReadCh)
+		roomCh <- WebsocketEvent{
+			Type:   WebsocketEventTypeDisconnect,
+			Client: c,
+		}
 	}()
 
 	c.conn.SetReadLimit(maxMessageSize)
@@ -47,7 +58,9 @@ func (c *Client) reader(roomCh chan<- WebsocketEvent) {
 
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				slog.Error("Error reading message", "client", c, "error", err)
+				slog.Error("Error reading message", "Client", c, "error", err)
+			} else {
+				slog.Info("Closing ws connection expectedly")
 			}
 			break
 		}
@@ -83,19 +96,21 @@ func (c *Client) writer(roomCh chan<- WebsocketEvent) {
 			Client: c,
 		}
 		ticker.Stop()
-		c.conn.Close()
 	}()
 
 	for {
 		select {
-		case msg, ok := <-c.ReadCh:
-			slog.Info("Sending message", "message", msg, "client", c)
+		case <-c.doneCh:
+			slog.Info("done received")
+			return
+		case msg, ok := <-c.readCh:
+			slog.Info("Sending message", "message", msg, "Client", c)
 			if !ok {
-				slog.Info("Read channel closed", "client", c)
+				slog.Info("Read channel closed", "Client", c)
 				return
 			}
-
-			err := c.conn.WriteJSON(msg.Message)
+			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+			err := c.conn.WriteJSON(msg)
 			if err != nil {
 				slog.Error("Error sending message", "error", err)
 				return

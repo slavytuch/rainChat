@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"log"
@@ -12,49 +13,61 @@ var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 }
-var userRepo UserRepo
-var room = NewRoom()
+var app *App
 
 func main() {
-	mux := http.NewServeMux()
+	r := gin.Default()
 
-	mux.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("./assets"))))
+	r.Static("/assets", "./assets")
+	r.LoadHTMLGlob("pages/*")
 
-	mux.HandleFunc("/", func(rw http.ResponseWriter, r *http.Request) {
-		http.ServeFile(rw, r, "pages/index.html")
+	r.GET("/", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "index.html", nil)
 	})
 
-	mux.HandleFunc("/register", registerHandler)
-	mux.HandleFunc("/login", loginHandler)
+	r.POST("/register", registerHandler)
+	r.POST("/login", loginHandler)
+	r.GET("/room/:id/user-list", roomUserListHandler)
 
-	mux.HandleFunc("/ws", func(rw http.ResponseWriter, r *http.Request) {
-		conn, err := upgrader.Upgrade(rw, r, nil)
+	r.GET("/room/:id/ws", func(c *gin.Context) {
+		conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 		if err != nil {
 			log.Println("Error from upgrade: " + err.Error())
 			return
 		}
 
-		userId := r.URL.Query().Get("token")
+		roomId, err := uuid.Parse(c.Param("id"))
+
+		if err != nil {
+			writeWebsocketError(conn, "Unknown room")
+			return
+		}
+
+		room := app.RoomRepo.GetById(roomId)
+
+		if room == nil {
+			writeWebsocketError(conn, "Unknown room")
+			return
+		}
+
+		userId := c.Query("token")
 
 		if userId == "" {
-			conn.WriteMessage(websocket.TextMessage, []byte("UserId header is not provided"))
-			conn.Close()
+			writeWebsocketError(conn, "Token is invalid")
 			return
 		}
 
 		userUUID, err := uuid.Parse(userId)
 
 		if err != nil {
-			conn.WriteMessage(websocket.TextMessage, []byte("UserId is invalid"))
-			conn.Close()
+			writeWebsocketError(conn, "Token is invalid")
 			return
 		}
 
-		connUser := userRepo.GetById(userUUID)
+		connUser := app.UserRepo.GetById(userUUID)
 
 		if connUser == nil {
-			conn.WriteMessage(websocket.TextMessage, []byte("Client not found"))
-			conn.Close()
+			writeWebsocketError(conn, "Token is invalid")
 			return
 		}
 
@@ -65,13 +78,19 @@ func main() {
 		err = room.Connect(&client)
 
 		if err != nil {
-			conn.WriteMessage(websocket.TextMessage, []byte("Error connecting to room: "+err.Error()))
-			conn.Close()
+			writeWebsocketError(conn, "Error connecting to room: "+err.Error())
 			return
 		}
 	})
 
 	fmt.Println("Starting...")
-	go room.Serve(make(chan bool))
-	log.Fatal(http.ListenAndServe(":8080", mux))
+
+	app = newApp()
+
+	log.Fatal(r.Run(":8080"))
+}
+
+func writeWebsocketError(conn *websocket.Conn, msg string) {
+	conn.WriteJSON(gin.H{"error": msg})
+	conn.Close()
 }

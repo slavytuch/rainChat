@@ -2,8 +2,10 @@ package main
 
 import (
 	"fmt"
+	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"log/slog"
+	"net/http"
 	"time"
 )
 
@@ -34,27 +36,18 @@ func userMessage(user *User, message string) Message {
 	}
 }
 
-func systemMessage(message string) Message {
-	return userMessage(&User{
-		ID:    uuid.New(),
-		Name:  "System",
-		Color: "red",
-	}, message)
-}
-
 func (r *Room) Connect(client *Client) error {
-	slog.Info("Connecting client", "client", client)
+	slog.Info("Connecting Client", "Client", client)
 
 	for _, c := range r.ConnectionList {
-		c.ReadCh <- WebsocketEvent{
-			Client:  client,
-			Type:    WebsocketEventTypeConnect,
-			Message: systemMessage(fmt.Sprintf("User %s connected", c.User.Name)),
+		c.readCh <- WebsocketEvent{
+			Client: client,
+			Type:   WebsocketEventTypeConnect,
 		}
 	}
 
 	for _, m := range r.MessageList {
-		client.ReadCh <- WebsocketEvent{
+		client.readCh <- WebsocketEvent{
 			Type:    WebsocketEventTypeMessageSend,
 			Message: m,
 		}
@@ -65,7 +58,7 @@ func (r *Room) Connect(client *Client) error {
 	return nil
 }
 
-func (r *Room) Disconnect(client *Client) {
+func (r *Room) deleteClient(client *Client) {
 	for i, c := range r.ConnectionList {
 		if c.Id == client.Id {
 			r.ConnectionList[i] = r.ConnectionList[len(r.ConnectionList)-1]
@@ -77,7 +70,7 @@ func (r *Room) Disconnect(client *Client) {
 
 func NewRoom() Room {
 	return Room{
-		Id:                  uuid.New(),
+		Id:                  uuid.MustParse("3e813ad4-b88d-4af1-b55c-43f8552ba32e"),
 		BroadcastingChannel: make(chan WebsocketEvent),
 	}
 }
@@ -103,18 +96,19 @@ func (r *Room) Serve(doneCh chan bool) {
 				r.MessageList = append(r.MessageList, we.Message)
 
 				for _, c := range r.ConnectionList {
-					c.ReadCh <- WebsocketEvent{
+					c.readCh <- WebsocketEvent{
 						Client:  we.Client,
 						Type:    WebsocketEventTypeMessageSend,
 						Message: we.Message,
 					}
 				}
 			case WebsocketEventTypeDisconnect:
-				r.Disconnect(we.Client)
+				r.deleteClient(we.Client)
+				we.Client.Close()
 				for _, c := range r.ConnectionList {
-					c.ReadCh <- WebsocketEvent{
-						Type:    WebsocketEventTypeMessageSend,
-						Message: systemMessage(fmt.Sprintf("Client %s has disconnected", we.Client.User.Name)),
+					c.readCh <- WebsocketEvent{
+						Type:   WebsocketEventTypeDisconnect,
+						Client: we.Client,
 					}
 				}
 			case WebsocketEventTypeMessageUpdate:
@@ -129,7 +123,7 @@ func (r *Room) Serve(doneCh chan bool) {
 					found = true
 
 					for _, c := range r.ConnectionList {
-						c.ReadCh <- WebsocketEvent{
+						c.readCh <- WebsocketEvent{
 							Type:    WebsocketEventTypeMessageUpdate,
 							Message: r.MessageList[midx],
 						}
@@ -144,4 +138,34 @@ func (r *Room) Serve(doneCh chan bool) {
 			}
 		}
 	}
+}
+
+func roomUserListHandler(c *gin.Context) {
+	roomId, err := uuid.Parse(c.Param("id"))
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid room id"})
+		return
+	}
+
+	room := app.RoomRepo.GetById(roomId)
+
+	if room == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid room id"})
+		return
+	}
+
+	var userList []map[string]string
+
+	for _, c := range room.ConnectionList {
+		userList = append(userList, map[string]string{
+			"id":    c.Id.String(),
+			"name":  c.User.Name,
+			"color": c.User.Color,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"userList": userList,
+	})
 }

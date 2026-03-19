@@ -8,18 +8,18 @@ import (
 )
 
 type User struct {
-	ID     uuid.UUID
-	Name   string
-	Color  string
-	SendCh chan Message
+	id     uuid.UUID
+	Name   string `json:"name"`
+	Color  string `json:"color"`
+	sendCh chan Message
 }
 
 func NewUser(name string) User {
 	return User{
-		ID:     uuid.New(),
+		id:     uuid.New(),
 		Name:   name,
 		Color:  fmt.Sprintf("#%.2x%.2x%.2x", rand.Intn(256), rand.Intn(256), rand.Intn(256)),
-		SendCh: make(chan Message),
+		sendCh: make(chan Message),
 	}
 }
 
@@ -28,6 +28,7 @@ func (u *User) createClient(conn *websocket.Conn) Client {
 		Id:     uuid.New(),
 		User:   u,
 		conn:   conn,
-		ReadCh: make(chan WebsocketEvent),
+		readCh: make(chan WebsocketEvent),
+		doneCh: make(chan struct{}),
 	}
 }

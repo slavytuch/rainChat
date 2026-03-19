@@ -22,7 +22,7 @@ func (r *UserRepo) PushUser(user *User) error {
 
 func (r *UserRepo) GetById(id uuid.UUID) *User {
 	for i, u := range r.userList {
-		if u.ID == id {
+		if u.id == id {
 			return r.userList[i]
 		}
 	}
@@ -43,7 +43,7 @@ func (r *UserRepo) GetByName(name string) *User {
 func (r *UserRepo) DeleteUser(user User) {
 	var result []*User
 	for _, u := range r.userList {
-		if u.ID != user.ID {
+		if u.id != user.id {
 			result = append(result, u)
 		}
 	}
