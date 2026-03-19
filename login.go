@@ -29,13 +29,11 @@ func loginHandler(rw http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		badHeaderResp(rw, "invalid request body: "+err.Error())
-
 		return
 	}
 
 	if req.Name == "" {
 		badHeaderResp(rw, "name is empty")
-
 		return
 	}
 
@@ -43,9 +41,12 @@ func loginHandler(rw http.ResponseWriter, r *http.Request) {
 
 	if user == nil {
 		badHeaderResp(rw, "not found")
-
 		return
 	}
+	respBody, _ := json.Marshal(map[string]any{
+		"token": user.ID,
+	})
+	rw.Write(respBody)
 }
 
 func registerHandler(rw http.ResponseWriter, r *http.Request) {
@@ -63,13 +64,11 @@ func registerHandler(rw http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		badHeaderResp(rw, "invalid request body: "+err.Error())
-
 		return
 	}
 
 	if req.Name == "" {
 		badHeaderResp(rw, "name is empty")
-
 		return
 	}
 
@@ -78,7 +77,6 @@ func registerHandler(rw http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		badHeaderResp(rw, "error creating user: "+err.Error())
-
 		return
 	}
 
