@@ -42,3 +42,15 @@ html {
     margin-top: 5px;
     padding: 2px;
 }
+
+.room-row {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    margin-bottom: 10px;
+}
+
+.room-row * {
+    padding: 10px;
+    margin-right: 10px;
+}

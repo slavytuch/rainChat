@@ -1,14 +1,6 @@
-package main
+package chat
 
 import "github.com/google/uuid"
-
-type LoginRequest struct {
-	Name string `form:"name" binding:"required"`
-}
-
-type RegisterRequest struct {
-	Name string `form:"name" binding:"required"`
-}
 
 type WebsocketMessage struct {
 	Type      WebsocketMessageType `json:"type"`

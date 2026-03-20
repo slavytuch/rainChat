@@ -1,4 +1,4 @@
-package main
+package chat
 
 import (
 	"fmt"
@@ -22,7 +22,7 @@ func (r *UserRepo) PushUser(user *User) error {
 
 func (r *UserRepo) GetById(id uuid.UUID) *User {
 	for i, u := range r.userList {
-		if u.id == id {
+		if u.Id == id {
 			return r.userList[i]
 		}
 	}
@@ -43,7 +43,7 @@ func (r *UserRepo) GetByName(name string) *User {
 func (r *UserRepo) DeleteUser(user User) {
 	var result []*User
 	for _, u := range r.userList {
-		if u.id != user.id {
+		if u.Id != user.Id {
 			result = append(result, u)
 		}
 	}

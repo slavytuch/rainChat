@@ -6,19 +6,22 @@
           content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Rain Chat</title>
-    <script type="text/javascript" src="/assets/index.js"></script>
+    <script type="text/javascript" src="/assets/room.js"></script>
     <link href="/assets/style.css" rel="stylesheet">
 </head>
 <body>
-<h1>Rain chat!</h1>
-<div id="room-list">
-    {{ range .roomList }}
-        <div class="room-row">
-            <a href="/room/{{.Id}}">{{.Name}}</a>
-            <button onclick="deleteRoom(this, '{{.Id}}')">Delete</button>
-        </div>
-    {{ end }}
+<h1>Room {{.name}}</h1>
+<div class="chat-wrapper">
+    <div id="chat">
+    </div>
+    <div id="chat-users">
+        <div>Users</div>
+    </div>
 </div>
-<button id="create-room-btn">Create room</button>
+<div class="chat-controls">
+    <textarea id="message"></textarea>
+    <button id="send" type="button">Send!</button>
+</div>
+<a href="/">Back to list</a>
 </body>
 </html>

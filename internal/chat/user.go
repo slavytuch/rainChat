@@ -1,4 +1,4 @@
-package main
+package chat
 
 import (
 	"fmt"
@@ -8,22 +8,22 @@ import (
 )
 
 type User struct {
-	id     uuid.UUID
-	Name   string `json:"name"`
-	Color  string `json:"color"`
+	Id     uuid.UUID `json:"-"`
+	Name   string    `json:"name"`
+	Color  string    `json:"color"`
 	sendCh chan Message
 }
 
 func NewUser(name string) User {
 	return User{
-		id:     uuid.New(),
+		Id:     uuid.New(),
 		Name:   name,
 		Color:  fmt.Sprintf("#%.2x%.2x%.2x", rand.Intn(256), rand.Intn(256), rand.Intn(256)),
 		sendCh: make(chan Message),
 	}
 }
 
-func (u *User) createClient(conn *websocket.Conn) Client {
+func (u *User) CreateClient(conn *websocket.Conn) Client {
 	return Client{
 		Id:     uuid.New(),
 		User:   u,

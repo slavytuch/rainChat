@@ -1,23 +1,22 @@
-package main
+package chat
 
 import (
 	"fmt"
-	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"log/slog"
-	"net/http"
 	"time"
 )
 
 type Room struct {
-	Id                  uuid.UUID
-	ConnectionList      []*Client
-	MessageList         []Message
-	BroadcastingChannel chan WebsocketEvent
+	Id                  uuid.UUID           `json:"id"`
+	Name                string              `json:"name"`
+	ConnectionList      []*Client           `json:"-"`
+	MessageList         []Message           `json:"-"`
+	BroadcastingChannel chan WebsocketEvent `json:"-"`
 }
 
 type Message struct {
-	Id        uuid.UUID `json:"id"`
+	Id        uuid.UUID `json:"Id"`
 	Author    string    `json:"author"`
 	Color     string    `json:"color"`
 	Text      string    `json:"text"`
@@ -68,14 +67,15 @@ func (r *Room) deleteClient(client *Client) {
 	}
 }
 
-func NewRoom() Room {
+func NewRoom(name string) Room {
 	return Room{
-		Id:                  uuid.MustParse("3e813ad4-b88d-4af1-b55c-43f8552ba32e"),
+		Id:                  uuid.New(),
+		Name:                name,
 		BroadcastingChannel: make(chan WebsocketEvent),
 	}
 }
 
-func (r *Room) Serve(doneCh chan bool) {
+func (r *Room) Serve(doneCh chan struct{}) {
 	for {
 		select {
 		case <-doneCh:
@@ -138,34 +138,4 @@ func (r *Room) Serve(doneCh chan bool) {
 			}
 		}
 	}
-}
-
-func roomUserListHandler(c *gin.Context) {
-	roomId, err := uuid.Parse(c.Param("id"))
-
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid room id"})
-		return
-	}
-
-	room := app.RoomRepo.GetById(roomId)
-
-	if room == nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid room id"})
-		return
-	}
-
-	var userList []map[string]string
-
-	for _, c := range room.ConnectionList {
-		userList = append(userList, map[string]string{
-			"id":    c.Id.String(),
-			"name":  c.User.Name,
-			"color": c.User.Color,
-		})
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"userList": userList,
-	})
 }

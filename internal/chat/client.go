@@ -1,4 +1,4 @@
-package main
+package chat
 
 import (
 	"github.com/google/uuid"
@@ -19,7 +19,7 @@ const (
 )
 
 type Client struct {
-	Id     uuid.UUID `json:"id"`
+	Id     uuid.UUID `json:"Id"`
 	User   *User     `json:"user"`
 	conn   *websocket.Conn
 	readCh chan WebsocketEvent
@@ -39,7 +39,7 @@ func (c *Client) Close() {
 	c.doneCh <- struct{}{}
 }
 
-func (c *Client) reader(roomCh chan<- WebsocketEvent) {
+func (c *Client) Reader(roomCh chan<- WebsocketEvent) {
 	defer func() {
 		roomCh <- WebsocketEvent{
 			Type:   WebsocketEventTypeDisconnect,
@@ -88,7 +88,7 @@ func (c *Client) reader(roomCh chan<- WebsocketEvent) {
 	}
 }
 
-func (c *Client) writer(roomCh chan<- WebsocketEvent) {
+func (c *Client) Writer(roomCh chan<- WebsocketEvent) {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
 		roomCh <- WebsocketEvent{
@@ -101,7 +101,7 @@ func (c *Client) writer(roomCh chan<- WebsocketEvent) {
 	for {
 		select {
 		case <-c.doneCh:
-			slog.Info("done received")
+			slog.Info("done received", "client", c)
 			return
 		case msg, ok := <-c.readCh:
 			slog.Info("Sending message", "message", msg, "Client", c)

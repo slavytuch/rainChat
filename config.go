@@ -1,18 +1,14 @@
 package main
 
+import "rainChat/internal/chat"
+
 type App struct {
-	UserRepo UserRepo
-	RoomRepo RoomRepo
+	UserRepo chat.UserRepo
+	RoomRepo chat.RoomRepo
 }
 
 func newApp() *App {
-	var a App
-
-	room := NewRoom()
-
-	a.RoomRepo.Push(&room)
-
-	go room.Serve(make(chan bool))
-
-	return &a
+	return &App{
+		RoomRepo: chat.RoomRepo{RoomList: make(map[*chat.Room]chan struct{})},
+	}
 }
