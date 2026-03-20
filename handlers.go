@@ -41,7 +41,6 @@ func loginHandler(c *gin.Context) {
 		"name":  user.Name,
 		"color": user.Color,
 	})
-
 }
 
 func registerHandler(c *gin.Context) {
@@ -205,4 +204,37 @@ func deleteRoomHandler(c *gin.Context) {
 func writeWebsocketError(conn *websocket.Conn, msg string) {
 	conn.WriteJSON(gin.H{"error": msg})
 	conn.Close()
+}
+
+func meHandler(c *gin.Context) {
+	token, err := c.Cookie("user-token")
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Error reading cookie: " + err.Error(),
+		})
+		return
+	}
+
+	userId, err := uuid.Parse(token)
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid token: " + err.Error(),
+		})
+		return
+	}
+
+	user := app.UserRepo.GetById(userId)
+
+	if user == nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "User not found",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"user": user,
+	})
 }

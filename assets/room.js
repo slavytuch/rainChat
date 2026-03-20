@@ -13,8 +13,8 @@ function sendMessage(message, conn) {
     }))
 }
 
-function addUser(id, name, color) {
-    document.getElementById("chat-users").innerHTML += "<div style='color:" + color + "' data-id='" + id + "'>" + name + "</div>"
+function addUser(name, color) {
+    document.getElementById("chat-users").innerHTML += "<div style='color:" + color + "'>" + name + "</div>"
 }
 
 function removeUser(id) {
@@ -26,23 +26,16 @@ document.addEventListener("DOMContentLoaded", () => {
     roomId = document.location.pathname.replace("/room/", "");
     console.log("RoomId", roomId)
 
-    let username = prompt("Login")
-    let route = "/login"
-    if (!username) {
-        username = prompt("Register")
-        route = "/register"
-    }
+    fetch("/me")
+        .then(resp => resp.json())
+        .then(data => {
+            if (data.error) {
+                alert(data.error)
+                return
+            }
 
-    fetch(route, {
-        method: "POST",
-        body: JSON.stringify({
-            name: username
-        })
-    })
-        .then(response => response.json())
-        .then((data) => {
-            addUser(data.token, data.name, data.color)
-            initWs(data.token, document.getElementById("message"))
+            addUser(data.name, data.color)
+            initWs(data.id, document.getElementById("message"))
             loadInfo()
         }).catch(error => console.error("Ошибка авторизации", error))
 })

@@ -52,6 +52,7 @@ func main() {
 
 	r.POST("/register", registerHandler)
 	r.POST("/login", loginHandler)
+	r.GET("/me", meHandler)
 	r.GET("/room/:id/info", roomInfoHandler)
 
 	r.GET("/room/:id/ws", websocketConnectHandler)

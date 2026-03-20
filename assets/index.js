@@ -19,6 +19,37 @@ function deleteRoom(button, id) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+    let token = getCookie("user-token")
+
+    let username = prompt("Login")
+    let route = "/login"
+    if (!username) {
+        username = prompt("Register")
+        route = "/register"
+    }
+
+    if (!username) {
+        alert("Get lost")
+        return
+    }
+
+    fetch(route, {
+        method: "POST",
+        body: JSON.stringify({
+            name: username
+        })
+    })
+        .then(response => response.json())
+        .then((data) => {
+            if (data.error) {
+                alert(data.error)
+                return
+            }
+            document.cookie += "user-token:" + data.id
+        }).catch()
+
+
+
     document.getElementById("create-room-btn").addEventListener("click", () => {
         let roomName = prompt("Name")
 
@@ -44,3 +75,9 @@ document.addEventListener("DOMContentLoaded", () => {
             })
     })
 })
+
+function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+}
