@@ -8,10 +8,10 @@ import (
 )
 
 type User struct {
-	Id     uuid.UUID `json:"-"`
-	Name   string    `json:"name"`
-	Color  string    `json:"color"`
-	sendCh chan Message
+	Id     uuid.UUID    `json:"-"`
+	Name   string       `json:"name"`
+	Color  string       `json:"color"`
+	sendCh chan Message `json:"-"`
 }
 
 func NewUser(name string) User {

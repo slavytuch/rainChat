@@ -13,8 +13,8 @@ function sendMessage(message, conn) {
     }))
 }
 
-function addUser(id, name, color) {
-    document.getElementById("chat-users").innerHTML += "<div style='color:" + color + "' data-id='" + id + "'>" + name + "</div>"
+function addUser(name, color) {
+    document.getElementById("chat-users").innerHTML += "<div style='color:" + color + "'>" + name + "</div>"
 }
 
 function removeUser(id) {
@@ -26,24 +26,15 @@ document.addEventListener("DOMContentLoaded", () => {
     roomId = document.location.pathname.replace("/room/", "");
     console.log("RoomId", roomId)
 
-    let username = prompt("Login")
-    let route = "/login"
-    if (!username) {
-        username = prompt("Register")
-        route = "/register"
-    }
+    fetch("/me")
+        .then(resp => resp.json())
+        .then(data => {
+            if (data.error) {
+                alert(data.error)
+                return
+            }
 
-    fetch(route, {
-        method: "POST",
-        body: JSON.stringify({
-            name: username
-        })
-    })
-        .then(response => response.json())
-        .then((data) => {
-            addUser(data.token, data.name, data.color)
-            initWs(data.token, document.getElementById("message"))
-            loadInfo()
+            initWs(data.id, document.getElementById("message"))
         }).catch(error => console.error("Ошибка авторизации", error))
 })
 
@@ -71,7 +62,7 @@ function initWs(token, messagebox) {
                     addMessage(data.message.text, data.message.author ?? "who knows", data.message.color ?? "orange")
                     break;
                 case 'connect':
-                    addUser(data.client.id, data.client.user.name, data.client.user.color)
+                    addUser(data.client.user.name, data.client.user.color)
                     systemMessage("User " + data.client.user.name + " connected" )
                     break
                 case 'disconnect':
@@ -107,6 +98,8 @@ function initWs(token, messagebox) {
                 sendMessage(message, conn)
             }
         })
+
+        loadInfo()
     }
 }
 
@@ -119,7 +112,7 @@ function loadInfo() {
             }
 
             for (user of resp.userList) {
-                addUser(user.id, user.name, user.color)
+                addUser(user.name, user.color)
             }
         }).catch(error => console.error("Error loading room", error))
 }
