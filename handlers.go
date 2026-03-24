@@ -73,6 +73,26 @@ func registerHandler(c *gin.Context) {
 	})
 }
 
+func roomHandler(c *gin.Context) {
+	roomId, err := uuid.Parse(c.Param("id"))
+
+	if err != nil {
+		pageNotFound(c)
+		return
+	}
+
+	room := app.RoomRepo.GetById(roomId)
+
+	if room == nil {
+		pageNotFound(c)
+		return
+	}
+
+	c.HTML(http.StatusOK, "room.html", gin.H{
+		"name": room.Name,
+	})
+}
+
 func roomInfoHandler(c *gin.Context) {
 	roomId, err := uuid.Parse(c.Param("id"))
 
@@ -88,14 +108,10 @@ func roomInfoHandler(c *gin.Context) {
 		return
 	}
 
-	var userList []map[string]string
+	var userList []*chat.User
 
 	for _, conn := range room.ConnectionList {
-		userList = append(userList, map[string]string{
-			"id":    conn.Id.String(),
-			"name":  conn.User.Name,
-			"color": conn.User.Color,
-		})
+		userList = append(userList, conn.User)
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -126,26 +142,7 @@ func websocketConnectHandler(c *gin.Context) {
 		return
 	}
 
-	userId := c.Query("token")
-
-	if userId == "" {
-		writeWebsocketError(conn, "Token is invalid")
-		return
-	}
-
-	userUUID, err := uuid.Parse(userId)
-
-	if err != nil {
-		writeWebsocketError(conn, "Token is invalid")
-		return
-	}
-
-	connUser := app.UserRepo.GetById(userUUID)
-
-	if connUser == nil {
-		writeWebsocketError(conn, "Token is invalid")
-		return
-	}
+	connUser := c.MustGet("user").(*chat.User)
 
 	client := connUser.CreateClient(conn)
 	go client.Reader(room.BroadcastingChannel)
@@ -207,32 +204,7 @@ func writeWebsocketError(conn *websocket.Conn, msg string) {
 }
 
 func meHandler(c *gin.Context) {
-	token, err := c.Cookie("user-token")
-
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Error reading cookie: " + err.Error(),
-		})
-		return
-	}
-
-	userId, err := uuid.Parse(token)
-
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid token: " + err.Error(),
-		})
-		return
-	}
-
-	user := app.UserRepo.GetById(userId)
-
-	if user == nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": "User not found",
-		})
-		return
-	}
+	user := c.MustGet("user").(*chat.User)
 
 	c.JSON(http.StatusOK, gin.H{
 		"user": user,

@@ -18,9 +18,7 @@ function deleteRoom(button, id) {
     })
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-    let token = getCookie("user-token")
-
+function loginOrRegister() {
     let username = prompt("Login")
     let route = "/login"
     if (!username) {
@@ -45,10 +43,31 @@ document.addEventListener("DOMContentLoaded", () => {
                 alert(data.error)
                 return
             }
-            document.cookie += "user-token:" + data.id
-        }).catch()
+            document.cookie = "user-token=" + data.token
+            loadMe()
+        }).catch(error => console.error("Error during auth", error))
+}
 
+function loadMe() {
+    fetch("/me")
+        .then(resp => resp.json())
+        .then(data => {
+            document.getElementById("user").innerText = data.user.name
+        })
+        .catch(error => {
+            alert("Error loading user:" + error)
+            loginOrRegister()
+        })
+}
 
+document.addEventListener("DOMContentLoaded", () => {
+    let token = getCookie("user-token")
+
+    if (!token) {
+        loginOrRegister()
+    } else {
+        loadMe()
+    }
 
     document.getElementById("create-room-btn").addEventListener("click", () => {
         let roomName = prompt("Name")

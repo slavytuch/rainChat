@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"log"
 	"net/http"
@@ -27,35 +26,21 @@ func main() {
 		})
 	})
 
-	r.GET("/room/:id", func(c *gin.Context) {
-		roomId, err := uuid.Parse(c.Param("id"))
-
-		if err != nil {
-			pageNotFound(c)
-			return
-		}
-
-		room := app.RoomRepo.GetById(roomId)
-
-		if room == nil {
-			pageNotFound(c)
-			return
-		}
-
-		c.HTML(http.StatusOK, "room.html", gin.H{
-			"name": room.Name,
-		})
-	})
+	r.POST("/register", registerHandler)
+	r.POST("/login", loginHandler)
 
 	r.POST("/create-room", createRoomHandler)
 	r.POST("/delete-room", deleteRoomHandler)
 
-	r.POST("/register", registerHandler)
-	r.POST("/login", loginHandler)
-	r.GET("/me", meHandler)
+	r.GET("/room/:id", roomHandler)
 	r.GET("/room/:id/info", roomInfoHandler)
 
-	r.GET("/room/:id/ws", websocketConnectHandler)
+	{
+		authGroup := r.Group("/")
+		authGroup.Use(authRequired())
+		authGroup.GET("/me", meHandler)
+		authGroup.GET("/room/:id/ws", websocketConnectHandler)
+	}
 
 	fmt.Println("Starting...")
 

@@ -34,9 +34,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 return
             }
 
-            addUser(data.name, data.color)
             initWs(data.id, document.getElementById("message"))
-            loadInfo()
         }).catch(error => console.error("Ошибка авторизации", error))
 })
 
@@ -64,7 +62,7 @@ function initWs(token, messagebox) {
                     addMessage(data.message.text, data.message.author ?? "who knows", data.message.color ?? "orange")
                     break;
                 case 'connect':
-                    addUser(data.client.id, data.client.user.name, data.client.user.color)
+                    addUser(data.client.user.name, data.client.user.color)
                     systemMessage("User " + data.client.user.name + " connected" )
                     break
                 case 'disconnect':
@@ -100,6 +98,8 @@ function initWs(token, messagebox) {
                 sendMessage(message, conn)
             }
         })
+
+        loadInfo()
     }
 }
 
@@ -112,7 +112,7 @@ function loadInfo() {
             }
 
             for (user of resp.userList) {
-                addUser(user.id, user.name, user.color)
+                addUser(user.name, user.color)
             }
         }).catch(error => console.error("Error loading room", error))
 }
