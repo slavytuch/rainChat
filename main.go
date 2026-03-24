@@ -35,6 +35,12 @@ func main() {
 	r.GET("/room/:id", roomHandler)
 	r.GET("/room/:id/info", roomInfoHandler)
 
+	r.GET("/reflect", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "reflect.html", nil)
+	})
+
+	r.POST("/reflect-connect", reflectConnectHandler)
+
 	{
 		authGroup := r.Group("/")
 		authGroup.Use(authRequired())
